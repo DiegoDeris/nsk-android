@@ -1,0 +1,458 @@
+name: Bootstrap project files
+on:
+  workflow_dispatch:
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create project structure
+        run: |
+          mkdir -p app/src/main/java/com/neuroshield/nsk
+          mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/values
+          mkdir -p gradle/wrapper
+
+          cat > build.gradle << 'ENDOFFILE'
+buildscript {
+    ext.kotlin_version = "1.9.0"
+    repositories { google(); mavenCentral() }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+ENDOFFILE
+
+          cat > app/build.gradle << 'ENDOFFILE'
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+android {
+    namespace 'com.neuroshield.nsk'
+    compileSdk 34
+    defaultConfig {
+        applicationId "com.neuroshield.nsk"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    kotlinOptions { jvmTarget = '11' }
+    buildFeatures { viewBinding true }
+}
+dependencies {
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.work:work-runtime-ktx:2.9.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'com.google.zxing:core:3.5.2'
+    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+}
+ENDOFFILE
+
+          cat > gradle/wrapper/gradle-wrapper.properties << 'ENDOFFILE'
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip
+networkTimeout=10000
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+ENDOFFILE
+
+          cat > app/proguard-rules.pro << 'ENDOFFILE'
+-keep class com.neuroshield.nsk.** { *; }
+-keep class com.google.zxing.** { *; }
+-dontwarn okhttp3.**
+-dontwarn okio.**
+ENDOFFILE
+
+          cat > .gitignore << 'ENDOFFILE'
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+app/release/
+ENDOFFILE
+
+      - name: Create AndroidManifest
+        run: |
+          cat > app/src/main/AndroidManifest.xml << 'ENDOFFILE'
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" xmlns:tools="http://schemas.android.com/tools"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.NSK">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <receiver android:name=".BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+        <service android:name=".SyncService" android:foregroundServiceType="dataSync" android:exported="false" />
+    </application>
+</manifest>
+ENDOFFILE
+
+      - name: Create resource files
+        run: |
+          cat > app/src/main/res/values/strings.xml << 'ENDOFFILE'
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NeuroShield Kids</string>
+</resources>
+ENDOFFILE
+
+          cat > app/src/main/res/values/themes.xml << 'ENDOFFILE'
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.NSK" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#3B82F6</item>
+        <item name="colorPrimaryVariant">#1D4ED8</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">#10B981</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="android:statusBarColor">#F8FAFC</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
+ENDOFFILE
+
+          cat > app/src/main/res/layout/activity_main.xml << 'ENDOFFILE'
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F8FAFC">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:gravity="center_horizontal">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="NeuroShield Kids" android:textSize="22sp" android:textStyle="bold"
+            android:textColor="#1E293B" android:layout_marginTop="32dp" />
+        <LinearLayout android:id="@+id/layoutScan" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:orientation="vertical"
+            android:gravity="center_horizontal" android:layout_marginTop="40dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Paso 1 de 2" android:textColor="#64748B" android:textSize="13sp" android:gravity="center" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Escanea el QR de configuracion" android:textSize="18sp" android:textStyle="bold"
+                android:textColor="#1E293B" android:gravity="center" android:layout_marginTop="8dp" />
+            <Button android:id="@+id/btnScanQr" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:text="Escanear QR"
+                android:backgroundTint="#3B82F6" android:paddingHorizontal="32dp" android:layout_marginTop="24dp" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/layoutPermission" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:orientation="vertical"
+            android:gravity="center_horizontal" android:layout_marginTop="40dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Paso 2 de 2" android:textColor="#64748B" android:textSize="13sp" android:gravity="center" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Activa el acceso a actividad" android:textSize="18sp" android:textStyle="bold"
+                android:textColor="#1E293B" android:gravity="center" android:layout_marginTop="8dp" />
+            <Button android:id="@+id/btnPermission" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:text="Activar en Ajustes"
+                android:backgroundTint="#10B981" android:paddingHorizontal="32dp" android:layout_marginTop="24dp" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/layoutActive" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:orientation="vertical"
+            android:gravity="center_horizontal" android:layout_marginTop="40dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Proteccion activa" android:textSize="20sp" android:textStyle="bold"
+                android:textColor="#10B981" android:gravity="center" />
+            <Button android:id="@+id/btnDisconnect" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:text="Desconectar dispositivo"
+                android:backgroundTint="#EF4444" android:paddingHorizontal="24dp" android:layout_marginTop="32dp" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
+ENDOFFILE
+
+      - name: Create Kotlin source files
+        run: |
+          cat > app/src/main/java/com/neuroshield/nsk/BootReceiver.kt << 'ENDOFFILE'
+package com.neuroshield.nsk
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import androidx.work.*
+import java.util.concurrent.TimeUnit
+class BootReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        val prefs = context.getSharedPreferences("nsk", Context.MODE_PRIVATE)
+        val token = prefs.getString("ingest_token", null) ?: return
+        val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
+            .addTag("nsk_sync")
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            "nsk_sync", ExistingPeriodicWorkPolicy.KEEP, request)
+    }
+}
+ENDOFFILE
+
+          cat > app/src/main/java/com/neuroshield/nsk/SyncService.kt << 'ENDOFFILE'
+package com.neuroshield.nsk
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.Service
+import android.content.Intent
+import android.os.IBinder
+import androidx.core.app.NotificationCompat
+class SyncService : Service() {
+    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onCreate() {
+        super.onCreate()
+        val channel = NotificationChannel("nsk_sync", "NSK Sincronizacion", NotificationManager.IMPORTANCE_MIN)
+        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val notif = NotificationCompat.Builder(this, "nsk_sync")
+            .setContentTitle("NeuroShield Kids")
+            .setContentText("Proteccion activa")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .build()
+        startForeground(1, notif)
+    }
+}
+ENDOFFILE
+
+      - name: Create UsageHelper and SyncWorker
+        run: |
+          cat > app/src/main/java/com/neuroshield/nsk/UsageHelper.kt << 'ENDOFFILE'
+package com.neuroshield.nsk
+import android.app.usage.UsageEvents
+import android.app.usage.UsageStatsManager
+import android.content.Context
+data class AppUsageEvent(val appName: String, val durationSeconds: Int, val occurredAt: String, val eventType: String)
+object UsageHelper {
+    fun getEventsSince(context: Context, sinceMs: Long): List<AppUsageEvent> {
+        val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val now = System.currentTimeMillis()
+        val events = mutableListOf<AppUsageEvent>()
+        val foregroundStart = mutableMapOf<String, Long>()
+        val usageEvents = usm.queryEvents(sinceMs, now)
+        val event = UsageEvents.Event()
+        while (usageEvents.hasNextEvent()) {
+            usageEvents.getNextEvent(event)
+            val pkg = event.packageName ?: continue
+            when (event.eventType) {
+                UsageEvents.Event.MOVE_TO_FOREGROUND -> {
+                    foregroundStart[pkg] = event.timeStamp
+                    events.add(AppUsageEvent(getAppLabel(context, pkg), 0, isoTime(event.timeStamp), "session_start"))
+                }
+                UsageEvents.Event.MOVE_TO_BACKGROUND -> {
+                    val start = foregroundStart.remove(pkg) ?: continue
+                    val dur = ((event.timeStamp - start) / 1000).toInt().coerceIn(0, 86400)
+                    if (dur > 0) events.add(AppUsageEvent(getAppLabel(context, pkg), dur, isoTime(start), "app_usage"))
+                }
+                UsageEvents.Event.SCREEN_INTERACTIVE ->
+                    events.add(AppUsageEvent("screen", 0, isoTime(event.timeStamp), "screen_on"))
+                UsageEvents.Event.SCREEN_NON_INTERACTIVE ->
+                    events.add(AppUsageEvent("screen", 0, isoTime(event.timeStamp), "screen_off"))
+            }
+        }
+        foregroundStart.forEach { (pkg, start) ->
+            val dur = ((now - start) / 1000).toInt().coerceIn(0, 86400)
+            if (dur > 0) events.add(AppUsageEvent(getAppLabel(context, pkg), dur, isoTime(start), "app_usage"))
+        }
+        return events
+    }
+    private fun getAppLabel(context: Context, packageName: String): String {
+        return try {
+            val pm = context.packageManager
+            pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+        } catch (e: Exception) { packageName.substringAfterLast('.') }
+    }
+    private fun isoTime(ms: Long): String {
+        return java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }.format(java.util.Date(ms))
+    }
+}
+ENDOFFILE
+
+          cat > app/src/main/java/com/neuroshield/nsk/SyncWorker.kt << 'ENDOFFILE'
+package com.neuroshield.nsk
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.work.CoroutineWorker
+import androidx.work.WorkerParameters
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
+class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    companion object {
+        const val SUPABASE_URL = "https://lqvgspmjfkfdurdnejzs.supabase.co"
+        const val ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxdmczcG1qZmtmZHVyZG5lanpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc1NzY1NDUsImV4cCI6MjA2MzE1MjU0NX0.M7UVtCuFfGpz3JNuqA-vBkVMGjkNfQhc3KJmj80cEGE"
+        const val PREFS_LAST_SYNC = "last_sync_ms"
+    }
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS).writeTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        try {
+            val prefs: SharedPreferences = applicationContext.getSharedPreferences("nsk", Context.MODE_PRIVATE)
+            val token = prefs.getString("ingest_token", null) ?: return@withContext Result.success()
+            val lastSync = prefs.getLong(PREFS_LAST_SYNC, System.currentTimeMillis() - 90 * 60 * 1000)
+            val events = UsageHelper.getEventsSince(applicationContext, lastSync)
+            if (events.isEmpty()) return@withContext Result.success()
+            events.chunked(500).forEach { chunk ->
+                val eventsJson = JSONArray().apply {
+                    chunk.forEach { e -> put(JSONObject().apply {
+                        put("app_name", e.appName); put("duration_seconds", e.durationSeconds)
+                        put("occurred_at", e.occurredAt); put("event_type", e.eventType)
+                    })}
+                }
+                val body = JSONObject().apply { put("token", token); put("events", eventsJson) }
+                    .toString().toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("$SUPABASE_URL/functions/v1/ingest-usage")
+                    .addHeader("apikey", ANON_KEY).addHeader("Authorization", "Bearer $ANON_KEY")
+                    .post(body).build()
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) return@withContext Result.retry()
+                response.close()
+            }
+            prefs.edit().putLong(PREFS_LAST_SYNC, System.currentTimeMillis()).apply()
+            Result.success()
+        } catch (e: Exception) { Result.retry() }
+    }
+}
+ENDOFFILE
+
+      - name: Create MainActivity
+        run: |
+          cat > app/src/main/java/com/neuroshield/nsk/MainActivity.kt << 'ENDOFFILE'
+package com.neuroshield.nsk
+import android.app.AppOpsManager
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
+import android.os.Build
+import android.os.Bundle
+import android.provider.Settings
+import android.view.View
+import androidx.appcompat.app.AppCompatActivity
+import androidx.work.*
+import com.google.zxing.integration.android.IntentIntegrator
+import com.neuroshield.nsk.databinding.ActivityMainBinding
+import java.util.concurrent.TimeUnit
+class MainActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var prefs: SharedPreferences
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        prefs = getSharedPreferences("nsk", Context.MODE_PRIVATE)
+        refresh()
+        binding.btnScanQr.setOnClickListener { startQrScan() }
+        binding.btnPermission.setOnClickListener { openUsageSettings() }
+        binding.btnDisconnect.setOnClickListener { disconnect() }
+    }
+    override fun onResume() { super.onResume(); refresh() }
+    private fun refresh() {
+        val token = prefs.getString("ingest_token", null)
+        val hasPermission = hasUsagePermission()
+        when {
+            token == null -> showStep(Step.SCAN)
+            !hasPermission -> showStep(Step.PERMISSION)
+            else -> { showStep(Step.ACTIVE); scheduleSync() }
+        }
+    }
+    private fun showStep(step: Step) {
+        binding.layoutScan.visibility = if (step == Step.SCAN) View.VISIBLE else View.GONE
+        binding.layoutPermission.visibility = if (step == Step.PERMISSION) View.VISIBLE else View.GONE
+        binding.layoutActive.visibility = if (step == Step.ACTIVE) View.VISIBLE else View.GONE
+    }
+    private fun startQrScan() {
+        IntentIntegrator(this).apply {
+            setPrompt("Escanea el QR de configuracion de NSK")
+            setBeepEnabled(false); setOrientationLocked(true); initiateScan()
+        }
+    }
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        val result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
+        if (result != null && result.contents != null) {
+            val token = result.contents.trim()
+            if (token.length >= 16) { prefs.edit().putString("ingest_token", token).apply(); refresh() }
+        } else { super.onActivityResult(requestCode, resultCode, data) }
+    }
+    private fun hasUsagePermission(): Boolean {
+        val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName)
+        else @Suppress("DEPRECATION") appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName)
+        return mode == AppOpsManager.MODE_ALLOWED
+    }
+    private fun openUsageSettings() { startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+    private fun disconnect() {
+        WorkManager.getInstance(this).cancelAllWorkByTag("nsk_sync")
+        prefs.edit().remove("ingest_token").apply(); refresh()
+    }
+    private fun scheduleSync() {
+        val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
+            .addTag("nsk_sync")
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork("nsk_sync", ExistingPeriodicWorkPolicy.KEEP, request)
+    }
+    enum class Step { SCAN, PERMISSION, ACTIVE }
+}
+ENDOFFILE
+
+      - name: Commit all files
+        run: |
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add .
+          git commit -m "Add Android project source files"
+          git push
