@@ -2,6 +2,7 @@ package com.neuroshield.nsk
 
 import android.app.AppOpsManager
 import android.content.Context
+import com.neuroshield.nsk.R
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
