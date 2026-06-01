@@ -2,17 +2,15 @@ package com.neuroshield.nsk
 
 import android.app.AppOpsManager
 import android.content.Context
-import com.neuroshield.nsk.R
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
-import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.work.*
 import com.google.zxing.integration.android.IntentIntegrator
+import com.neuroshield.nsk.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -21,6 +19,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import android.provider.Settings
+import android.view.View
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
@@ -30,6 +30,8 @@ class MainActivity : AppCompatActivity() {
         const val ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxdmdzcG1qZmtmZHVyZG5lanpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzOTQxMzcsImV4cCI6MjA5NDk3MDEzN30.wocGhw9oj96-GAKNNFYai_KciAuZfs4jO_oMqbOkXuo"
     }
 
+    private lateinit var binding: ActivityMainBinding
+
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
@@ -37,9 +39,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        // Handle nsk://setup/[token] deep link (from camera scanning InstallToken QR)
         val deepLinkToken = intent?.data?.let { uri ->
             if (uri.scheme == "nsk" && uri.host == "setup") uri.lastPathSegment else null
         }
@@ -50,7 +52,7 @@ class MainActivity : AppCompatActivity() {
 
         refresh()
 
-        findViewById<View>(R.id.btnScanQr).setOnClickListener {
+        binding.btnScanQr.setOnClickListener {
             IntentIntegrator(this).apply {
                 setPrompt("Escanea el QR de configuración de NSK")
                 setBeepEnabled(false)
@@ -58,10 +60,10 @@ class MainActivity : AppCompatActivity() {
                 initiateScan()
             }
         }
-        findViewById<View>(R.id.btnPermission).setOnClickListener {
+        binding.btnPermission.setOnClickListener {
             startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
         }
-        findViewById<View>(R.id.btnDisconnect).setOnClickListener {
+        binding.btnDisconnect.setOnClickListener {
             WorkManager.getInstance(this).cancelAllWorkByTag("nsk_sync")
             getSharedPreferences("nsk", Context.MODE_PRIVATE).edit().remove("ingest_token").apply()
             refresh()
@@ -109,14 +111,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showStep(step: Step) {
-        findViewById<View>(R.id.layoutScan).visibility = if (step == Step.SCAN) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.layoutPermission).visibility = if (step == Step.PERMISSION) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.layoutActive).visibility = if (step == Step.ACTIVE) View.VISIBLE else View.GONE
+        binding.layoutScan.visibility = if (step == Step.SCAN) View.VISIBLE else View.GONE
+        binding.layoutPermission.visibility = if (step == Step.PERMISSION) View.VISIBLE else View.GONE
+        binding.layoutActive.visibility = if (step == Step.ACTIVE) View.VISIBLE else View.GONE
     }
 
     private fun registerDevice(installToken: String) {
         showStep(Step.SCAN)
-        findViewById<View>(R.id.btnScanQr).isEnabled = false
+        binding.btnScanQr.isEnabled = false
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val bodyJson = JSONObject().apply {
@@ -140,13 +142,13 @@ class MainActivity : AppCompatActivity() {
                             .edit().putString("ingest_token", json.getString("ingest_token")).apply()
                         refresh()
                     } else {
-                        findViewById<View>(R.id.btnScanQr).isEnabled = true
+                        binding.btnScanQr.isEnabled = true
                         Toast.makeText(this@MainActivity, "Error: ${json.optString("error", "inténtalo de nuevo")}", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    findViewById<View>(R.id.btnScanQr).isEnabled = true
+                    binding.btnScanQr.isEnabled = true
                     Toast.makeText(this@MainActivity, "Error de red: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
