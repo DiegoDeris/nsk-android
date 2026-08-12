@@ -31,35 +31,74 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
             val prefs = applicationContext.getSharedPreferences("nsk", Context.MODE_PRIVATE)
             val ingestToken = prefs.getString("ingest_token", null) ?: return@withContext Result.success()
             val lastSync = prefs.getLong("last_sync_ms", System.currentTimeMillis() - 90 * 60 * 1000)
+
             val events = UsageHelper.getEventsSince(applicationContext, lastSync)
-            if (events.isEmpty()) return@withContext Result.success()
+            val metrics = UsageHelper.computeMetrics(applicationContext, lastSync)
+            val signals = SignalStore.read(applicationContext)
 
-            events.chunked(500).forEach { chunk ->
-                val arr = JSONArray().apply {
-                    chunk.forEach { e ->
-                        put(JSONObject().apply {
-                            put("app_name", e.appName)
-                            put("duration_seconds", e.durationSeconds)
-                            put("occurred_at", e.occurredAt)
-                            put("event_type", e.eventType)
-                        })
-                    }
+            // Bloque de señales conductuales nativas. Viaja en el metadata del
+            // primer evento del lote para no requerir cambios de esquema.
+            val nativeSignals = JSONObject().apply {
+                put("source", "android_native")
+                put("schema_version", 2)
+
+                // Compulsividad y patrón de acceso
+                put("unlocks", signals.unlocks)
+                put("screen_ons", signals.screenOns)
+                put("night_unlocks", signals.nightUnlocks)
+
+                // Uso a oscuras → conducta de ocultación / móvil en la cama
+                put("dark_unlocks", signals.darkUnlocks)
+                signals.avgLux?.let { put("avg_lux", it.toDouble()) }
+
+                // Ventana de sueño (proxy: mayor intervalo sin desbloquear)
+                put("longest_idle_gap_minutes", signals.longestGapMinutes)
+                if (signals.firstUseMs > 0) put("first_use_ms", signals.firstUseMs)
+                if (signals.lastUseMs > 0) put("last_use_ms", signals.lastUseMs)
+
+                // Atención y diversidad de actividad
+                put("app_switches", metrics.appSwitches)
+                put("switches_per_minute", metrics.switchesPerMinute)
+                put("distinct_apps", metrics.distinctApps)
+                put("session_entropy", metrics.sessionEntropy)
+                put("avg_session_seconds", metrics.avgSessionSeconds)
+                put("longest_session_seconds", metrics.longestSessionSeconds)
+                put("night_minutes", metrics.nightMinutes)
+            }
+
+            if (events.isEmpty()) {
+                // Aun sin sesiones de app puede haber señales relevantes
+                // (desbloqueos nocturnos, uso a oscuras). Se envía un latido.
+                if (signals.unlocks > 0) {
+                    val heartbeat = JSONArray().put(JSONObject().apply {
+                        put("app_name", "__signals__")
+                        put("duration_seconds", 0)
+                        put("occurred_at", nowIso())
+                        put("event_type", "signals")
+                        put("metadata", nativeSignals)
+                    })
+                    if (!postBatch(ingestToken, heartbeat)) return@withContext Result.retry()
                 }
-                val body = JSONObject().apply {
-                    put("token", ingestToken)
-                    put("events", arr)
-                }.toString().toRequestBody("application/json".toMediaType())
+                prefs.edit().putLong("last_sync_ms", System.currentTimeMillis()).apply()
+                return@withContext Result.success()
+            }
 
-                val request = Request.Builder()
-                    .url("$SUPABASE_URL/functions/v1/ingest-usage")
-                    .addHeader("apikey", ANON_KEY)
-                    .addHeader("Authorization", "Bearer $ANON_KEY")
-                    .post(body)
-                    .build()
-
-                val response = client.newCall(request).execute()
-                if (!response.isSuccessful) return@withContext Result.retry()
-                response.close()
+            var first = true
+            for (chunk in events.chunked(500)) {
+                val arr = JSONArray()
+                for (e in chunk) {
+                    arr.put(JSONObject().apply {
+                        put("app_name", e.appName)
+                        put("duration_seconds", e.durationSeconds)
+                        put("occurred_at", e.occurredAt)
+                        put("event_type", e.eventType)
+                        if (first) {
+                            put("metadata", nativeSignals)
+                            first = false
+                        }
+                    })
+                }
+                if (!postBatch(ingestToken, arr)) return@withContext Result.retry()
             }
 
             prefs.edit().putLong("last_sync_ms", System.currentTimeMillis()).apply()
@@ -67,5 +106,26 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
         } catch (e: Exception) {
             Result.retry()
         }
+    }
+
+    private fun nowIso(): String =
+        java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }.format(java.util.Date())
+
+    private fun postBatch(token: String, events: JSONArray): Boolean {
+        val body = JSONObject().apply {
+            put("token", token)
+            put("events", events)
+        }.toString().toRequestBody("application/json".toMediaType())
+
+        val request = Request.Builder()
+            .url("$SUPABASE_URL/functions/v1/ingest-usage")
+            .addHeader("apikey", ANON_KEY)
+            .addHeader("Authorization", "Bearer $ANON_KEY")
+            .post(body)
+            .build()
+
+        return client.newCall(request).execute().use { it.isSuccessful }
     }
 }

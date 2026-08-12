@@ -40,7 +40,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Paso 1 de 2"
+                android:text="Paso 1 de 3"
                 android:textColor="#64748B"
                 android:textSize="13sp"
                 android:gravity="center" />
@@ -87,7 +87,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Paso 2 de 2"
+                android:text="Paso 2 de 3"
                 android:textColor="#64748B"
                 android:textSize="13sp"
                 android:gravity="center" />
@@ -122,7 +122,54 @@
 
         </LinearLayout>
 
-        <!-- STEP 3: Active -->
+        <!-- STEP 3: Battery optimisation exemption -->
+        <LinearLayout
+            android:id="@+id/layoutBattery"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:layout_marginTop="40dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Paso 3 de 3"
+                android:textColor="#64748B"
+                android:textSize="13sp"
+                android:gravity="center" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Mantener la protección activa"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#1E293B"
+                android:gravity="center"
+                android:layout_marginTop="8dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Android puede detener la protección para ahorrar batería. Toca Permitir para evitarlo."
+                android:textColor="#64748B"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:layout_marginTop="12dp" />
+
+            <Button
+                android:id="@+id/btnBattery"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Permitir"
+                android:backgroundTint="#10B981"
+                android:paddingHorizontal="32dp"
+                android:layout_marginTop="24dp" />
+
+        </LinearLayout>
+
+        <!-- STEP 4: Active -->
         <LinearLayout
             android:id="@+id/layoutActive"
             android:layout_width="match_parent"
