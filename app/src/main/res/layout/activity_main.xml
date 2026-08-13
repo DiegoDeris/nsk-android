@@ -203,6 +203,42 @@
                 android:gravity="center"
                 android:layout_marginTop="12dp" />
 
+            <!-- Fase 2: se ofrece cuando el padre ya usa el producto y
+                 entiende para qué sirve. Al instalar solo se pide un permiso. -->
+            <LinearLayout
+                android:id="@+id/layoutPhase2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#EFF6FF"
+                android:padding="16dp"
+                android:layout_marginTop="28dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Análisis avanzado disponible"
+                    android:textStyle="bold"
+                    android:textColor="#1E3A8A"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Activa la detección de ansiedad digital: mide cuánto tarda en responder a los mensajes y cuántas veces coge el móvil sin motivo. No leemos ningún mensaje."
+                    android:textColor="#475569"
+                    android:textSize="13sp"
+                    android:layout_marginTop="6dp" />
+
+                <Button
+                    android:id="@+id/btnPhase2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Activar (20 segundos)"
+                    android:backgroundTint="#3B82F6"
+                    android:layout_marginTop="12dp" />
+            </LinearLayout>
+
             <Button
                 android:id="@+id/btnDisconnect"
                 android:layout_width="wrap_content"

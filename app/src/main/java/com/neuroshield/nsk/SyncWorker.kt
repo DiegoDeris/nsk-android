@@ -64,6 +64,16 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
                 put("avg_session_seconds", metrics.avgSessionSeconds)
                 put("longest_session_seconds", metrics.longestSessionSeconds)
                 put("night_minutes", metrics.nightMinutes)
+
+                // Fase 2: solo presentes si el padre concedió el permiso de
+                // notificaciones. El motor las marca como no disponibles si no.
+                if (signals.notificationListenerActive) {
+                    put("notifications_total", signals.notificationsTotal)
+                    put("notifications_social", signals.notificationsSocial)
+                    signals.avgResponseSeconds?.let { put("avg_response_seconds", it) }
+                    signals.fastResponseRatio?.let { put("fast_response_ratio", it) }
+                    put("phantom_pickups", signals.phantomPickups)
+                }
             }
 
             if (events.isEmpty()) {

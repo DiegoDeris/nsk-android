@@ -81,6 +81,15 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnBattery.setOnClickListener { requestBatteryExemption() }
 
+        binding.btnPhase2.setOnClickListener {
+            speak("Busca NeuroShield Kids en la lista y activa el interruptor.")
+            try {
+                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            } catch (_: Exception) {
+                startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+            }
+        }
+
         binding.btnDisconnect.setOnClickListener {
             WorkManager.getInstance(this).cancelAllWorkByTag("nsk_sync")
             stopService(Intent(this, SignalCollectorService::class.java))
@@ -147,8 +156,26 @@ class MainActivity : AppCompatActivity() {
                 ensureNotificationPermission()
                 SignalCollectorService.start(this)
                 scheduleSync()
+
+                // La fase 2 se ofrece solo cuando ya lleva unos días midiendo.
+                // Pedirla al instalar dispararía el abandono; ofrecerla cuando
+                // el padre ya ve datos hace que la conceda.
+                val enabled = NotificationSignalService.isEnabled(this)
+                binding.layoutPhase2.visibility =
+                    if (!enabled && daysSinceSetup() >= 3) View.VISIBLE else View.GONE
             }
         }
+    }
+
+    /** Días transcurridos desde que se vinculó el dispositivo. */
+    private fun daysSinceSetup(): Int {
+        val prefs = getSharedPreferences("nsk", Context.MODE_PRIVATE)
+        var since = prefs.getLong("setup_at_ms", 0L)
+        if (since == 0L) {
+            since = System.currentTimeMillis()
+            prefs.edit().putLong("setup_at_ms", since).apply()
+        }
+        return ((System.currentTimeMillis() - since) / 86_400_000L).toInt()
     }
 
     private fun showStep(step: Step) {

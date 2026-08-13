@@ -32,6 +32,19 @@ object SignalStore {
     private const val K_LAST_SCREEN_OFF = "last_screen_off" // para calcular ventana de sueño
     private const val K_LONGEST_GAP = "longest_gap_min"     // mayor intervalo sin uso → proxy de sueño
 
+    // Señales de notificaciones (fase 2: requiere permiso adicional)
+    private const val K_NOTIF_TOTAL = "notif_total"
+    private const val K_NOTIF_SOCIAL = "notif_social"
+    private const val K_RESP_SUM_MS = "resp_sum_ms"          // suma de latencias
+    private const val K_RESP_N = "resp_n"                    // nº de respuestas medidas
+    private const val K_RESP_UNDER_30 = "resp_under_30"      // respuestas en menos de 30 s
+    private const val K_LAST_NOTIF_MS = "last_notif_ms"      // para detectar desbloqueo espontáneo
+    private const val K_PHANTOM_PICKUPS = "phantom_pickups"  // desbloqueos sin notificación previa
+    private const val K_NOTIF_ACTIVE = "notif_listener_active"
+
+    /** Ventana tras una notificación en la que un desbloqueo se considera provocado por ella. */
+    private const val NOTIF_ATTRIBUTION_WINDOW_MS = 3 * 60 * 1000L
+
     /** Umbral de lux por debajo del cual consideramos "a oscuras" (habitación con luz apagada). */
     private const val DARK_LUX_THRESHOLD = 12f
 
@@ -88,6 +101,14 @@ object SignalStore {
         if (p.getLong(K_FIRST_USE, 0L) == 0L) e.putLong(K_FIRST_USE, now)
         e.putLong(K_LAST_USE, now)
 
+        // Desbloqueo espontáneo: coger el móvil sin que haya llegado nada.
+        // Es la medida más limpia de compulsión, porque no hay estímulo externo.
+        val lastNotif = p.getLong(K_LAST_NOTIF_MS, 0L)
+        val provoked = lastNotif > 0L && (now - lastNotif) <= NOTIF_ATTRIBUTION_WINDOW_MS
+        if (!provoked && p.getBoolean(K_NOTIF_ACTIVE, false)) {
+            e.putInt(K_PHANTOM_PICKUPS, p.getInt(K_PHANTOM_PICKUPS, 0) + 1)
+        }
+
         // Intervalo desde el último apagado de pantalla → candidato a ventana de sueño
         val lastOff = p.getLong(K_LAST_SCREEN_OFF, 0L)
         if (lastOff > 0L) {
@@ -104,6 +125,36 @@ object SignalStore {
         prefs(ctx).edit().putLong(K_LAST_SCREEN_OFF, System.currentTimeMillis()).apply()
     }
 
+    // ── Notificaciones (fase 2) ───────────────────────────────────────────────
+
+    fun recordNotificationPosted(ctx: Context, social: Boolean) {
+        rollover(ctx)
+        val p = prefs(ctx)
+        val e = p.edit()
+        e.putInt(K_NOTIF_TOTAL, p.getInt(K_NOTIF_TOTAL, 0) + 1)
+        if (social) {
+            e.putInt(K_NOTIF_SOCIAL, p.getInt(K_NOTIF_SOCIAL, 0) + 1)
+            e.putLong(K_LAST_NOTIF_MS, System.currentTimeMillis())
+        }
+        e.apply()
+    }
+
+    fun recordNotificationResponse(ctx: Context, latencyMs: Long) {
+        rollover(ctx)
+        val p = prefs(ctx)
+        val e = p.edit()
+        e.putLong(K_RESP_SUM_MS, p.getLong(K_RESP_SUM_MS, 0L) + latencyMs)
+        e.putInt(K_RESP_N, p.getInt(K_RESP_N, 0) + 1)
+        if (latencyMs <= 30_000L) {
+            e.putInt(K_RESP_UNDER_30, p.getInt(K_RESP_UNDER_30, 0) + 1)
+        }
+        e.apply()
+    }
+
+    fun setNotificationListenerActive(ctx: Context, active: Boolean) {
+        prefs(ctx).edit().putBoolean(K_NOTIF_ACTIVE, active).apply()
+    }
+
     // ── Lectura ───────────────────────────────────────────────────────────────
 
     data class DailySignals(
@@ -116,12 +167,23 @@ object SignalStore {
         val firstUseMs: Long,
         val lastUseMs: Long,
         val longestGapMinutes: Int,
+        // Fase 2
+        val notificationsTotal: Int,
+        val notificationsSocial: Int,
+        /** Segundos medios hasta abrir una notificación social. */
+        val avgResponseSeconds: Double?,
+        /** Proporción 0-1 de respuestas en menos de 30 s. */
+        val fastResponseRatio: Double?,
+        /** Desbloqueos sin notificación previa: compulsión pura. */
+        val phantomPickups: Int,
+        val notificationListenerActive: Boolean,
     )
 
     fun read(ctx: Context): DailySignals {
         rollover(ctx)
         val p = prefs(ctx)
         val n = p.getInt(K_LIGHT_N, 0)
+        val respN = p.getInt(K_RESP_N, 0)
         return DailySignals(
             day = p.getString(K_DAY, today())!!,
             unlocks = p.getInt(K_UNLOCKS, 0),
@@ -132,6 +194,12 @@ object SignalStore {
             firstUseMs = p.getLong(K_FIRST_USE, 0L),
             lastUseMs = p.getLong(K_LAST_USE, 0L),
             longestGapMinutes = p.getInt(K_LONGEST_GAP, 0),
+            notificationsTotal = p.getInt(K_NOTIF_TOTAL, 0),
+            notificationsSocial = p.getInt(K_NOTIF_SOCIAL, 0),
+            avgResponseSeconds = if (respN > 0) (p.getLong(K_RESP_SUM_MS, 0L) / respN) / 1000.0 else null,
+            fastResponseRatio = if (respN > 0) p.getInt(K_RESP_UNDER_30, 0).toDouble() / respN else null,
+            phantomPickups = p.getInt(K_PHANTOM_PICKUPS, 0),
+            notificationListenerActive = p.getBoolean(K_NOTIF_ACTIVE, false),
         )
     }
 }

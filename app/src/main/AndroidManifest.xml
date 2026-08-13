@@ -52,6 +52,19 @@
             android:exported="false"
             android:foregroundServiceType="dataSync"/>
 
+        <!-- Fase 2: latencia de respuesta social y desbloqueos espontáneos.
+             Se activa semanas después de la instalación, cuando el padre ya
+             usa el producto y entiende para qué sirve. Nunca lee contenido:
+             solo de qué app viene la notificación y cuándo se abre. -->
+        <service
+            android:name=".NotificationSignalService"
+            android:exported="false"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService"/>
+            </intent-filter>
+        </service>
+
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
