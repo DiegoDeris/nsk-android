@@ -74,6 +74,12 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
                     signals.fastResponseRatio?.let { put("fast_response_ratio", it) }
                     put("phantom_pickups", signals.phantomPickups)
                 }
+
+                // Integridad de la medición. Se envía siempre, incluso a cero:
+                // el servidor tiene que saber si el día está completo antes de
+                // emitir cualquier valoración clínica.
+                put("collection_gaps", signals.collectionGaps)
+                put("collection_gap_minutes", signals.collectionGapMinutes)
             }
 
             if (events.isEmpty()) {

@@ -42,6 +42,12 @@ object SignalStore {
     private const val K_PHANTOM_PICKUPS = "phantom_pickups"  // desbloqueos sin notificación previa
     private const val K_NOTIF_ACTIVE = "notif_listener_active"
 
+    // ── Integridad de la medición ─────────────────────────────────────────────
+    private const val K_GAPS = "collection_gaps"        // nº de interrupciones del día
+    private const val K_GAP_MINUTES = "gap_minutes"     // minutos totales sin medir
+    private const val K_GAP_SINCE = "gap_since_ms"      // hueco abierto (0 = ninguno)
+    private const val K_GAP_REASON = "gap_reason"
+
     /** Ventana tras una notificación en la que un desbloqueo se considera provocado por ella. */
     private const val NOTIF_ATTRIBUTION_WINDOW_MS = 3 * 60 * 1000L
 
@@ -155,6 +161,35 @@ object SignalStore {
         prefs(ctx).edit().putBoolean(K_NOTIF_ACTIVE, active).apply()
     }
 
+    /**
+     * Registra que la recogida se interrumpió. Es tan importante como las propias
+     * señales: un día con huecos no es un día con poco uso, y el motor clínico
+     * tiene que poder distinguirlo para no emitir un veredicto sobre datos
+     * incompletos.
+     */
+    fun recordCollectionGap(ctx: Context, reason: String) {
+        rollover(ctx)
+        val p = prefs(ctx)
+        p.edit()
+            .putInt(K_GAPS, p.getInt(K_GAPS, 0) + 1)
+            .putLong(K_GAP_SINCE, System.currentTimeMillis())
+            .putString(K_GAP_REASON, reason)
+            .apply()
+    }
+
+    /** Se llama al volver a arrancar la recogida: cierra el hueco y lo contabiliza. */
+    fun closeCollectionGap(ctx: Context) {
+        rollover(ctx)
+        val p = prefs(ctx)
+        val since = p.getLong(K_GAP_SINCE, 0L)
+        if (since <= 0L) return
+        val lostMin = ((System.currentTimeMillis() - since) / 60_000L).toInt().coerceAtLeast(0)
+        p.edit()
+            .putInt(K_GAP_MINUTES, p.getInt(K_GAP_MINUTES, 0) + lostMin)
+            .remove(K_GAP_SINCE)
+            .apply()
+    }
+
     // ── Lectura ───────────────────────────────────────────────────────────────
 
     data class DailySignals(
@@ -177,6 +212,10 @@ object SignalStore {
         /** Desbloqueos sin notificación previa: compulsión pura. */
         val phantomPickups: Int,
         val notificationListenerActive: Boolean,
+        /** Veces que la recogida se interrumpió hoy. */
+        val collectionGaps: Int,
+        /** Minutos del día en los que no se estuvo midiendo. */
+        val collectionGapMinutes: Int,
     )
 
     fun read(ctx: Context): DailySignals {
@@ -200,6 +239,12 @@ object SignalStore {
             fastResponseRatio = if (respN > 0) p.getInt(K_RESP_UNDER_30, 0).toDouble() / respN else null,
             phantomPickups = p.getInt(K_PHANTOM_PICKUPS, 0),
             notificationListenerActive = p.getBoolean(K_NOTIF_ACTIVE, false),
+            collectionGaps = p.getInt(K_GAPS, 0),
+            collectionGapMinutes = p.getInt(K_GAP_MINUTES, 0) +
+                // Si hay un hueco todavía abierto, cuéntalo ya: no esperes a cerrarlo.
+                p.getLong(K_GAP_SINCE, 0L).let {
+                    if (it > 0L) ((System.currentTimeMillis() - it) / 60_000L).toInt() else 0
+                },
         )
     }
 }

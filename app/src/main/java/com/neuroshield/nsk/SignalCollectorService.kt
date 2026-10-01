@@ -99,6 +99,11 @@ class SignalCollectorService : Service() {
         super.onCreate()
         startForeground(NOTIF_ID, buildNotification())
 
+        // Si venimos de una interrupción, ciérrala para saber cuántos minutos se
+        // perdieron. El servidor necesita ese dato para decidir si el día es
+        // evaluable.
+        SignalStore.closeCollectionGap(this)
+
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
         lightSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_LIGHT)
 
@@ -120,6 +125,22 @@ class SignalCollectorService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // START_STICKY: si el sistema mata el servicio por memoria, lo recrea.
         return START_STICKY
+    }
+
+    /**
+     * Android 15+ puede imponer un tiempo máximo a algunos tipos de servicio en
+     * primer plano. El tipo que usamos (specialUse) no está limitado, pero si una
+     * versión futura lo limitara, el servicio se detendría en silencio y
+     * dejaríamos de medir sin que nadie lo supiera: eso es exactamente lo que no
+     * puede pasar en esta app.
+     *
+     * Así que registramos el corte como un hueco de medición —el motor clínico ya
+     * sabe no emitir veredicto sin datos suficientes— y dejamos que el trabajo
+     * periódico vuelva a levantar el servicio.
+     */
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        SignalStore.recordCollectionGap(this, reason = "fgs_timeout")
+        stopSelf()
     }
 
     override fun onDestroy() {
@@ -151,7 +172,7 @@ class SignalCollectorService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("NeuroShield Kids")
             .setContentText("Protección activa")
-            .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+            .setSmallIcon(R.drawable.ic_stat_shield)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setOngoing(true)
             .setShowWhen(false)

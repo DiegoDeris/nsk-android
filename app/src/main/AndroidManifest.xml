@@ -8,7 +8,14 @@
 
     <!-- Servicio en primer plano: imprescindible para que el sistema no mate la recogida -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <!--
+      En Android 15+ (API 35) un servicio de tipo dataSync se detiene a las 6 h
+      acumuladas por día. La recogida de señales tiene que estar activa de forma
+      continua o se pierden desbloqueos y uso nocturno sin que nadie se entere,
+      así que el tipo correcto es specialUse, que no tiene ese límite.
+      Google revisa la justificación declarada abajo en Play Console.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
@@ -21,6 +28,8 @@
     <application
         android:allowBackup="false"
         android:label="NeuroShield Kids"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/AppTheme">
 
         <activity android:name=".MainActivity" android:exported="true"
@@ -50,7 +59,11 @@
             android:name=".SignalCollectorService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="dataSync"/>
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Recogida continua de senales conductuales del dispositivo (encendidos de pantalla, desbloqueos, luz ambiental y franjas de uso nocturno) para el analisis clinico de riesgo emocional que el tutor legal ha configurado. Los eventos del sistema que se necesitan (ACTION_SCREEN_ON, ACTION_USER_PRESENT, ACTION_SCREEN_OFF) solo pueden recibirse con un receptor registrado en tiempo de ejecucion, lo que exige un proceso activo de forma permanente. El servicio muestra una notificacion persistente y visible mientras esta en marcha."/>
+        </service>
 
         <!-- Fase 2: latencia de respuesta social y desbloqueos espontáneos.
              Se activa semanas después de la instalación, cuando el padre ya
@@ -58,7 +71,7 @@
              solo de qué app viene la notificación y cuándo se abre. -->
         <service
             android:name=".NotificationSignalService"
-            android:exported="false"
+            android:exported="true"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService"/>

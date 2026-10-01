@@ -2,19 +2,84 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Firma de publicación
+//
+// Google Play no acepta compilaciones de depuración. Hace falta firmar con una
+// clave que SOLO tú controlas: si se pierde, no se puede volver a publicar una
+// actualización de esta app nunca más.
+//
+// La clave no vive en el repositorio. Se lee de dos sitios posibles:
+//   - keystore.properties en la raíz del proyecto (para compilar en tu Mac)
+//   - variables de entorno (para GitHub Actions)
+//
+// Si no hay ninguna de las dos, la compilación de release se hace sin firmar y
+// avisa. Nunca falla en silencio.
+// ─────────────────────────────────────────────────────────────────────────────
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+def hasKeystoreFile = keystorePropertiesFile.exists()
+if (hasKeystoreFile) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+def envStorePath = System.getenv("NSK_KEYSTORE_PATH")
+def hasEnvKeystore = envStorePath != null && !envStorePath.isEmpty()
+def canSign = hasKeystoreFile || hasEnvKeystore
+
 android {
     namespace 'com.neuroshield.nsk'
-    compileSdk 34
+    // Google Play exige API 36 para apps nuevas desde el 31/08/2026.
+    compileSdk 36
+
     defaultConfig {
         applicationId 'com.neuroshield.nsk'
         minSdk 26
-        targetSdk 34
+        targetSdk 36
         versionCode 1
         versionName '1.0'
     }
-    buildTypes {
-        debug { minifyEnabled false }
+
+    if (canSign) {
+        signingConfigs {
+            release {
+                if (hasKeystoreFile) {
+                    storeFile file(keystoreProperties['storeFile'])
+                    storePassword keystoreProperties['storePassword']
+                    keyAlias keystoreProperties['keyAlias']
+                    keyPassword keystoreProperties['keyPassword']
+                } else {
+                    storeFile file(envStorePath)
+                    storePassword System.getenv("NSK_KEYSTORE_PASSWORD")
+                    keyAlias System.getenv("NSK_KEY_ALIAS")
+                    keyPassword System.getenv("NSK_KEY_PASSWORD")
+                }
+            }
+        }
     }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+        release {
+            // Ofuscación y reducción de código para la versión publicada.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (canSign) {
+                signingConfig signingConfigs.release
+            } else {
+                println "\n⚠️  NSK: compilando RELEASE SIN FIRMAR."
+                println "    Google Play no aceptará este archivo."
+                println "    Crea keystore.properties o define NSK_KEYSTORE_PATH.\n"
+            }
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -22,6 +87,7 @@ android {
     kotlinOptions { jvmTarget = '17' }
     buildFeatures { viewBinding true }
 }
+
 dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
