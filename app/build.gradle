@@ -80,6 +80,18 @@ android {
         }
     }
 
+    // El análisis estático de la compilación de publicación aborta por defecto
+    // ante avisos que no bloquean el funcionamiento (por ejemplo, sobrescribir
+    // un método añadido en una versión de Android más reciente que la mínima).
+    // Se deja que la compilación termine, pero el informe se publica siempre
+    // como artefacto y HAY QUE LEERLO antes de subir nada a Google Play.
+    lint {
+        abortOnError false
+        checkReleaseBuilds true
+        htmlReport true
+        xmlReport true
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17

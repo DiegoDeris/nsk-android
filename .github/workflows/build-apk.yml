@@ -29,6 +29,15 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon
 
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nsk-android-lint
+          path: app/build/reports/lint-results-*.html
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
