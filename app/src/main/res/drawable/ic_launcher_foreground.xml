@@ -10,22 +10,24 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Escudo -->
+    <!-- Escudo: arriba recto con esquinas suaves, laterales que convergen abajo -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,26
-                         L76,34
-                         L76,56
-                         C76,70 66,79 54,84
-                         C42,79 32,70 32,56
-                         L32,34
+        android:pathData="M39,27
+                         L69,27
+                         Q73,27 73,31
+                         L73,49
+                         Q73,67 54,81
+                         Q35,67 35,49
+                         L35,31
+                         Q35,27 39,27
                          Z" />
 
-    <!-- Línea de tendencia interior (recortada en el escudo) -->
+    <!-- Línea de tendencia interior -->
     <path
-        android:strokeColor="#1E88A8"
-        android:strokeWidth="4.2"
+        android:strokeColor="#145C72"
+        android:strokeWidth="3.6"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M39,61 L47,61 L51,49 L57,69 L61,57 L69,57" />
+        android:pathData="M42,51 L47.5,51 L50,43 L53.5,58 L57,46 L59.5,51 L66,51" />
 </vector>

@@ -74,10 +74,29 @@
                 android:value="Recogida continua de senales conductuales del dispositivo (encendidos de pantalla, desbloqueos, luz ambiental y franjas de uso nocturno) para el analisis clinico de riesgo emocional que el tutor legal ha configurado. Los eventos del sistema que se necesitan (ACTION_SCREEN_ON, ACTION_USER_PRESENT, ACTION_SCREEN_OFF) solo pueden recibirse con un receptor registrado en tiempo de ejecucion, lo que exige un proceso activo de forma permanente. El servicio muestra una notificacion persistente y visible mientras esta en marcha."/>
         </service>
 
-        <!-- Fase 2: latencia de respuesta social y desbloqueos espontáneos.
-             Se activa semanas después de la instalación, cuando el padre ya
-             usa el producto y entiende para qué sirve. Nunca lee contenido:
-             solo de qué app viene la notificación y cuándo se abre. -->
+        <!--
+          FASE 2 — DESACTIVADA EN LA v1, A PROPÓSITO.
+
+          Mide la latencia de respuesta social y los desbloqueos sin estímulo
+          previo. El código está completo en NotificationSignalService.kt y
+          funciona; lo que no está es la declaración que el sistema necesita
+          para enlazarlo.
+
+          El motivo es de riesgo de publicación, no técnico:
+          BIND_NOTIFICATION_LISTENER_SERVICE es el permiso que más rechazos
+          provoca en la categoría de control parental, y una app sin historial
+          en la tienda parte con desventaja. La fase 2 ya estaba pensada para
+          activarse semanas después de la instalación, así que no se pierde
+          nada del producto inicial.
+
+          Para reactivarla en la v1.1, cuando la app ya esté publicada:
+            1. Descomentar el bloque <service> de abajo.
+            2. Volver a declarar el permiso en Play Console con su
+               justificación.
+          El motor clínico ya trata estas señales como opcionales: si no
+          llegan, marca esas dimensiones como no disponibles en lugar de
+          suponer valores.
+
         <service
             android:name=".NotificationSignalService"
             android:exported="true"
@@ -86,6 +105,7 @@
                 <action android:name="android.service.notification.NotificationListenerService"/>
             </intent-filter>
         </service>
+        -->
 
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>

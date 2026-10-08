@@ -35,6 +35,19 @@ import java.util.concurrent.TimeUnit
 class MainActivity : AppCompatActivity() {
 
     companion object {
+        /**
+         * Fase 2 (latencia de respuesta social y desbloqueos sin estímulo).
+         *
+         * Desactivada en la v1 porque su servicio no está declarado en el
+         * manifiesto: ofrecerla llevaría al padre a unos ajustes del sistema
+         * donde NSK no aparece, que es peor que no ofrecerla.
+         *
+         * Para reactivarla: poner esto a true Y descomentar el bloque
+         * <service> de NotificationSignalService en el AndroidManifest.
+         * Las dos cosas, o vuelve el callejón sin salida.
+         */
+        const val FASE_2_DISPONIBLE = false
+
         const val SUPABASE_URL = "https://lqvgspmjfkfdurdnejzs.supabase.co"
         const val ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxdmdzcG1qZmtmZHVyZG5lanpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzOTQxMzcsImV4cCI6MjA5NDk3MDEzN30.wocGhw9oj96-GAKNNFYai_KciAuZfs4jO_oMqbOkXuo"
     }
@@ -160,9 +173,10 @@ class MainActivity : AppCompatActivity() {
                 // La fase 2 se ofrece solo cuando ya lleva unos días midiendo.
                 // Pedirla al instalar dispararía el abandono; ofrecerla cuando
                 // el padre ya ve datos hace que la conceda.
-                val enabled = NotificationSignalService.isEnabled(this)
+                val enabled = FASE_2_DISPONIBLE && NotificationSignalService.isEnabled(this)
                 binding.layoutPhase2.visibility =
-                    if (!enabled && daysSinceSetup() >= 3) View.VISIBLE else View.GONE
+                    if (FASE_2_DISPONIBLE && !enabled && daysSinceSetup() >= 3) View.VISIBLE
+                    else View.GONE
             }
         }
     }
