@@ -90,6 +90,12 @@ android {
         checkReleaseBuilds true
         htmlReport true
         xmlReport true
+        // Ruta fija y predecible. Por defecto el nombre del informe cambia
+        // según la variante (lint-results-release.html, lint-vital-...), y la
+        // compilación no lo encontraba: se descartaba en silencio y nos
+        // quedábamos sin el informe que hay que revisar antes de publicar.
+        htmlOutput = project.layout.buildDirectory.file("reports/lint-results-nsk.html").get().asFile
+        xmlOutput = project.layout.buildDirectory.file("reports/lint-results-nsk.xml").get().asFile
     }
 
     compileOptions {
