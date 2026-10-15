@@ -172,7 +172,7 @@ class SignalCollectorService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("NeuroShield Kids")
             .setContentText("Protección activa")
-            .setSmallIcon(R.drawable.ic_stat_shield)
+            .setSmallIcon(R.drawable.ic_stat_nsk)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setOngoing(true)
             .setShowWhen(false)
