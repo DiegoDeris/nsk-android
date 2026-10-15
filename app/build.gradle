@@ -106,6 +106,17 @@ android {
     buildFeatures { viewBinding true }
 }
 
+// El paso de la compilación que recoge el informe de análisis se ejecuta justo
+// después de `assembleDebug`, y en ese momento el análisis todavía no se ha
+// ejecutado: por eso el informe no aparecía nunca y la instrucción de
+// revisarlo antes de publicar era papel mojado.
+//
+// Encadenándolo aquí, el informe existe cuando se va a recoger. Cuesta menos
+// de un minuto por compilación y evita publicar a ciegas.
+afterEvaluate {
+    tasks.named("assembleDebug").configure { finalizedBy("lint") }
+}
+
 dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
