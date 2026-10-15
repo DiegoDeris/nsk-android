@@ -59,7 +59,9 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="https" android:host="nsk-neuroshieldkids.vercel.app" android:pathPrefix="/s"/>
+                <data android:scheme="https" android:host="nsk-neuroshieldkids.vercel.app" android:pathPrefix="/install"/>
                 <data android:scheme="https" android:host="nsk.app" android:pathPrefix="/s"/>
+                <data android:scheme="https" android:host="nsk.app" android:pathPrefix="/install"/>
             </intent-filter>
         </activity>
 

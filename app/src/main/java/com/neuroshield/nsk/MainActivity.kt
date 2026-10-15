@@ -48,6 +48,12 @@ class MainActivity : AppCompatActivity() {
          */
         const val FASE_2_DISPONIBLE = false
 
+        /** Primer segmento de ruta válido en un enlace de emparejamiento. */
+        private val RUTAS_SETUP = setOf("s", "install")
+
+        /** Longitud mínima de un código de instalación legítimo. */
+        private const val MIN_TOKEN = 16
+
         const val SUPABASE_URL = "https://lqvgspmjfkfdurdnejzs.supabase.co"
         const val ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxdmdzcG1qZmtmZHVyZG5lanpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzOTQxMzcsImV4cCI6MjA5NDk3MDEzN30.wocGhw9oj96-GAKNNFYai_KciAuZfs4jO_oMqbOkXuo"
     }
@@ -126,15 +132,28 @@ class MainActivity : AppCompatActivity() {
         extractToken(intent)?.let { registerDevice(it) }
     }
 
-    /** Acepta tanto el esquema propio nsk://setup/TOKEN como el App Link https://nsk.app/s/TOKEN */
+    /**
+     * Extrae el código de instalación de un enlace.
+     *
+     * Formatos aceptados:
+     *   nsk://setup/TOKEN
+     *   https://CUALQUIER-DOMINIO/s/TOKEN
+     *   https://CUALQUIER-DOMINIO/install/TOKEN
+     *
+     * No se filtra por dominio a propósito. Antes solo se aceptaba nsk.app,
+     * un dominio que no tenemos, así que ningún enlace real llegaba a
+     * emparejar. Lo que valida el código es el servidor, no este filtro: el
+     * token es de un solo uso y caduca, de modo que restringir el dominio
+     * aquí no añadía seguridad y sí rompía el único camino que existía.
+     */
     private fun extractToken(intent: Intent?): String? {
         val uri: Uri = intent?.data ?: return null
         return when {
             uri.scheme == "nsk" && uri.host == "setup" -> uri.lastPathSegment
-            uri.scheme == "https" && uri.host == "nsk.app" &&
-                uri.pathSegments.firstOrNull() == "s" -> uri.lastPathSegment
+            uri.scheme == "https" && uri.pathSegments.firstOrNull() in RUTAS_SETUP ->
+                uri.lastPathSegment
             else -> null
-        }
+        }?.takeIf { it.length >= MIN_TOKEN }
     }
 
     @Deprecated("Deprecated in Java")
@@ -142,14 +161,26 @@ class MainActivity : AppCompatActivity() {
         val result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
         if (result?.contents != null) {
             val content = result.contents.trim()
+            // Se reutiliza extractToken para que el QR escaneado desde la app y
+            // el enlace abierto desde fuera acepten exactamente lo mismo. Antes
+            // eran dos listas distintas y la de aquí solo admitía nsk.app.
+            val codigo = runCatching {
+                extractToken(Intent(Intent.ACTION_VIEW, Uri.parse(content)))
+            }.getOrNull()
+
             when {
-                content.startsWith("nsk://setup/") -> registerDevice(content.removePrefix("nsk://setup/"))
-                content.startsWith("https://nsk.app/s/") -> registerDevice(content.substringAfterLast('/'))
-                content.length >= 16 -> {
+                codigo != null -> registerDevice(codigo)
+                // QR antiguo: el token de envío pelado, sin enlace alrededor.
+                content.length >= MIN_TOKEN && !content.contains("://") -> {
                     getSharedPreferences("nsk", Context.MODE_PRIVATE).edit()
                         .putString("ingest_token", content).apply()
                     refresh()
                 }
+                else -> Toast.makeText(
+                    this,
+                    "Ese QR no es de NeuroShield Kids. Pide uno nuevo desde el panel.",
+                    Toast.LENGTH_LONG,
+                ).show()
             }
         } else {
             super.onActivityResult(requestCode, resultCode, data)
