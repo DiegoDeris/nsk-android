@@ -58,10 +58,20 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
+                <!--
+                  Dominios desde los que un enlace de emparejamiento abre la app.
+                  Para que Android los verifique, cada uno tiene que servir
+                  /.well-known/assetlinks.json con la huella del certificado de
+                  firma. Si se anade un dominio aqui sin publicar ese archivo,
+                  el enlace no abre la app y no avisa de nada.
+                  nsk.app se quito el 29/10/2026: no es un dominio nuestro.
+                -->
                 <data android:scheme="https" android:host="nsk-neuroshieldkids.vercel.app" android:pathPrefix="/s"/>
                 <data android:scheme="https" android:host="nsk-neuroshieldkids.vercel.app" android:pathPrefix="/install"/>
-                <data android:scheme="https" android:host="nsk.app" android:pathPrefix="/s"/>
-                <data android:scheme="https" android:host="nsk.app" android:pathPrefix="/install"/>
+                <data android:scheme="https" android:host="neuroshieldkids.com" android:pathPrefix="/s"/>
+                <data android:scheme="https" android:host="neuroshieldkids.com" android:pathPrefix="/install"/>
+                <data android:scheme="https" android:host="www.neuroshieldkids.com" android:pathPrefix="/s"/>
+                <data android:scheme="https" android:host="www.neuroshieldkids.com" android:pathPrefix="/install"/>
             </intent-filter>
         </activity>
 
